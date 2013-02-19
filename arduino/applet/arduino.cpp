@@ -27,7 +27,7 @@ int serialServoFlag = 255;
 
 // Initial setup
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   int servoPin = servoStartPin;
   for (int servoId = 0; servoId < 8; servoId++) {
     servos[servoId].attach(servoPin);
