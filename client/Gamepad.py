@@ -5,11 +5,8 @@ from Config import Config
 class GamePad:
     
     joy = []
-    x1 = 0
-    y1 = 0
     serial = None
     servo = None
-    armsEngaged = True
         
     def __init__(self):
         config = Config()
@@ -47,21 +44,11 @@ class GamePad:
             value = event.dict['value']
             
             if (axis == 0):
-                self.x1 = value
-                self.servo.steer(self.x1, self.y1)
+                self.servo.update(Servo.REAR_MOTOR, value)
 
             if (axis == 1):
-                self.y1 = value
-                self.servo.steer(self.x1, self.y1)
-
-            if (axis == 2):
-                self.servo.update(Servo.TURRET_BASE, value)    
-
-            if (axis == 3):
-                self.servo.update(Servo.CAMERA, value)
-                if (self.armsEngaged):
-                    self.servo.update(Servo.LEFT_SHOULDER, value)
-                    self.servo.update(Servo.RIGHT_SHOULDER, value)
+                self.servo.update(Servo.LEFT_FRONT_MOTOR, value)
+                self.servo.update(Servo.RIGHT_FRONT_MOTOR, value)
 
         elif event.type == pygame.JOYBUTTONDOWN:
             button = event.dict['button']
@@ -71,33 +58,19 @@ class GamePad:
                 self.exit()
 
             if (button == 1):
-                self.servo.decrement(Servo.LEFT_ARM, 5)
-                self.servo.decrement(Servo.RIGHT_ARM, 5)
-
-            if (button == 3):
-                self.servo.increment(Servo.LEFT_ARM, 5)
-                self.servo.increment(Servo.RIGHT_ARM, 5)
+                self.servo.increment(Servo.CLAW, 5)
                 
             if (button == 2):
-                self.toggleArms()
+                self.servo.increment(Servo.ARM, 5)
+
+            if (button == 3):
+                self.servo.decrement(Servo.CLAW, 5)
+            
+            if (button == 4):
+                self.servo.decrement(Servo.ARM, 5)
                 
         else:
             pass
-
-    def toggleArms(self):
-        if (self.armsEngaged):
-            self.armsEngaged = False
-            self.servo.update(Servo.LEFT_SHOULDER, -0.65)
-            self.servo.update(Servo.RIGHT_SHOULDER, -0.65)
-            self.servo.update(Servo.LEFT_ARM, 0.35)
-            self.servo.update(Servo.RIGHT_ARM, 0.35)
-            
-        else:
-            self.armsEngaged = True
-            self.servo.update(Servo.LEFT_SHOULDER, 0)
-            self.servo.update(Servo.RIGHT_SHOULDER, 0)
-            self.servo.update(Servo.LEFT_ARM, 0)
-            self.servo.update(Servo.RIGHT_ARM, 0)
         
     # wait for joystick input
     def joystickControl(self):
@@ -130,27 +103,21 @@ class Servo:
     POSITION = 0
     
     # Servo IDs
-    TURRET_BASE = 1
-    CAMERA = 2
-    LEFT_SHOULDER = 3
-    RIGHT_SHOULDER = 4
-    LEFT_ARM = 5
-    RIGHT_ARM = 6
-    LEFT_MOTOR = 7
-    RIGHT_MOTOR = 8
+    LEFT_FRONT_MOTOR = 1
+    RIGHT_FRONT_MOTOR = 2
+    REAR_MOTOR = 3
+    ARM = 4
+    CLAW = 5
     
     # Arduino serial start Flag for next byte tuple
     START_FLAG = 255
     
     servos = (
-        [0, 90, 180, INVERTED],  # Turret Base
-        [0, 90, 180, STANDARD],  # Camera Vertical
-        [0, 90, 180, INVERTED],  # Left Shoulder Vertical
-        [0, 102, 180, STANDARD],  # Right Shoulder Vertical
-        [0, 90, 180, INVERTED],  # Left Cannon
-        [0, 100, 180, STANDARD],  # Right Cannon
-        [0, 90, 180, STANDARD],  # Left Motor
-        [0, 90, 180, STANDARD]  # Right Motor
+        [0, 90, 180, INVERTED],  # Left Front Motor
+        [0, 90, 180, STANDARD],  # Right Front Motor
+        [0, 90, 180, STANDARD],  # Rear Motor
+        [0, 90, 180, STANDARD],  # Arm
+        [0, 90, 180, STANDARD]   # Claw
     )
 
     servoPositions = (
@@ -158,10 +125,7 @@ class Servo:
         [servos[1][CENTER]],
         [servos[2][CENTER]],
         [servos[3][CENTER]],
-        [servos[4][CENTER]],
-        [servos[5][CENTER]],
-        [servos[6][CENTER]],
-        [servos[7][CENTER]]
+        [servos[4][CENTER]]
     )
     serial = None
     
