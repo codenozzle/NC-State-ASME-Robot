@@ -57,17 +57,17 @@ class GamePad:
             if (button == 9):
                 self.exit()
 
-            if (button == 1):
-                self.servo.increment(Servo.CLAW, 5)
-                
-            if (button == 2):
-                self.servo.increment(Servo.ARM, 5)
-
-            if (button == 3):
+            if (button == 0):
                 self.servo.decrement(Servo.CLAW, 5)
+                
+            if (button == 1):
+                self.servo.decrement(Servo.ARM, 10)
+
+            if (button == 2):
+                self.servo.increment(Servo.CLAW, 5)
             
-            if (button == 4):
-                self.servo.decrement(Servo.ARM, 5)
+            if (button == 3):
+                self.servo.increment(Servo.ARM, 10)
                 
         else:
             pass
@@ -113,10 +113,10 @@ class Servo:
     START_FLAG = 255
     
     servos = (
-        [0, 90, 180, INVERTED],  # Left Front Motor
-        [0, 90, 180, STANDARD],  # Right Front Motor
-        [0, 90, 180, STANDARD],  # Rear Motor
-        [0, 90, 180, STANDARD],  # Arm
+        [20, 95, 160, STANDARD],  # Left Front Motor
+        [20, 90, 160, INVERTED],  # Right Front Motor
+        [20, 90, 160, INVERTED],  # Rear Motor
+        [90, 150, 180, STANDARD],  # Arm
         [0, 90, 180, STANDARD]   # Claw
     )
 
@@ -131,6 +131,8 @@ class Servo:
     
     def __init__(self, serial):
         self.serial = serial
+        for servoNumber in xrange(1, len(self.servos)):
+            self.update(servoNumber+1, 0.5)
 
     def increment(self, servoNumber, amount):
         if (self.servos[servoNumber - 1][self.DIRECTION] == 1):
@@ -171,6 +173,7 @@ class Servo:
 
         self.servoPositions[servoNumber - 1][self.POSITION] = int(round(servoRotation))
         self.updateArduino(servoNumber)
+        #print "servoNumber: " + repr(servoNumber) + " servoRotation: " + repr(servoRotation)
 
     def steer(self, x, y):
         power = y
