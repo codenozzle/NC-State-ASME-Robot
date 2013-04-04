@@ -1,14 +1,5 @@
 #include <Servo.h>
 
-/*TORSO 1
-HEAD 2
-LEFT_SHOULDER 3
-RIGHT_SHOULDER 4
-LEFT_ARM 5
-RIGHT_ARM 6
-LEFT_TREAD 7
-RIGHT_TREAD 8*/
-
 // Servo variables
 int val;
 int diff;
@@ -36,8 +27,15 @@ void setup() {
 void loop() {
   if (Serial.available() > 2) {
     startbyte = Serial.read();
+    
+    // Move servo
     if (startbyte == serialServoFlag) {
       move(Serial.read()-1, Serial.read());
+    }
+    
+    // Toggle laser
+    if (startbyte == 254) {
+      laser(Serial.read(), Serial.read());
     }
   }
 }
@@ -45,6 +43,19 @@ void loop() {
 // Writes a PWM signal to a servo
 void move(int servoId, int position) {
   servos[servoId].write(position);
+}
+
+// Writes a high/low signal to a pin that has a laser
+void laser(int laser, int position) {
+  
+  if (position == 1) {
+    digitalWrite(laser, HIGH);
+  } 
+  
+  if (position == 0) {
+    digitalWrite(laser, LOW); 
+  }
+  
 }
 
 

@@ -1,10 +1,14 @@
 import pygame
 import serial
+import math
 from Config import Config
 
 class GamePad:
     
     joy = []
+    x1 = 0
+    y1 = 0
+    x2 = 0
     serial = None
     servo = None
         
@@ -44,11 +48,16 @@ class GamePad:
             value = event.dict['value']
             
             if (axis == 0):
-                self.servo.update(Servo.REAR_MOTOR, value)
+                self.x1 = value
+                self.servo.wheelControl(self.x1, self.y1, self.x2)
 
             if (axis == 1):
-                self.servo.update(Servo.LEFT_FRONT_MOTOR, value)
-                self.servo.update(Servo.RIGHT_FRONT_MOTOR, value)
+                self.y1 = value
+                self.servo.wheelControl(self.x1, self.y1, self.x2)
+
+            if (axis == 2):
+                self.x2 = value
+                self.servo.wheelControl(self.x1, self.y1, self.x2)
 
         elif event.type == pygame.JOYBUTTONDOWN:
             button = event.dict['button']
@@ -58,15 +67,27 @@ class GamePad:
                 self.exit()
 
             if (button == 0):
-                self.servo.decrement(Servo.CLAW, 5)
-                
-            if (button == 1):
-                self.servo.decrement(Servo.ARM, 10)
+                self.servo.update(Servo.CLAW, -1)
 
             if (button == 2):
+                self.servo.update(Servo.CLAW, 0.8)
+
+            if (button == 1):
+                self.servo.update(Servo.ARM, 0.7)
+
+            if (button == 3):
+                self.servo.update(Servo.ARM, -1)
+                
+            if (button == 7):
+                self.servo.decrement(Servo.CLAW, 5)
+                
+            if (button == 6):
+                self.servo.decrement(Servo.ARM, 10)
+
+            if (button == 5):
                 self.servo.increment(Servo.CLAW, 5)
             
-            if (button == 3):
+            if (button == 4):
                 self.servo.increment(Servo.ARM, 10)
                 
         else:
@@ -113,9 +134,9 @@ class Servo:
     START_FLAG = 255
     
     servos = (
-        [20, 95, 160, STANDARD],  # Left Front Motor
-        [20, 90, 160, INVERTED],  # Right Front Motor
-        [20, 90, 160, INVERTED],  # Rear Motor
+        [26, 96, 166, STANDARD],  # Left Front Motor
+        [20, 90, 160, STANDARD],  # Right Front Motor
+        [20, 90, 160, STANDARD],  # Rear Motor
         [90, 150, 180, STANDARD],  # Arm
         [0, 90, 180, STANDARD]   # Claw
     )
@@ -175,32 +196,63 @@ class Servo:
         self.updateArduino(servoNumber)
         #print "servoNumber: " + repr(servoNumber) + " servoRotation: " + repr(servoRotation)
 
-    def steer(self, x, y):
-        power = y
-        rotation = abs(x)
-        rightPower = power
-        leftPower = power
-        
-        if (x > 0):
-            rightPower += rotation
-            leftPower -= rotation
-            
-        elif (x < 0):
-            rightPower -= rotation
-            leftPower += rotation
+    def wheelControl(self, x, y, r):
+##        power1 = x - (0.5 * r)
+##        power2 = (-0.5 * x) - (0.866 * y) - (0.5 * r)
+##        power3 = (-0.5 * x) + (0.866 * y) - (0.5 * r) #3/5 added updated formulas and defined above relationships. 
+##        wheelPower = self.scale([power1, power2, power3])
+##        
+##        self.update(self.LEFT_FRONT_MOTOR, wheelPower[2])
+##        self.update(self.RIGHT_FRONT_MOTOR, wheelPower[1])
+##        self.update(self.REAR_MOTOR, wheelPower[0])
 
-        self.update(self.LEFT_MOTOR, self.constrain(leftPower, power))
-        self.update(self.RIGHT_MOTOR, self.constrain(rightPower, power))
+        # Modify the x and y if the velocity vector exceeds 1
+        v = math.sqrt((x*x) + (y*y))
+        if (v > 1):
+            power1 = ((x / v) - (0.5 * r))
+            power2 = (-0.5 * (x / v)) - (0.866 * (y / v)) - (0.5 * r)
+            power3 = (-0.5 * (x / v)) + (0.866 * (y / v)) - (0.5 * r)
+            #print "power1, power2, power3: ", power1, power2, power3
+        else:
+            scalar = 3
+            power1 = (math.pow(x, scalar)) - math.pow(r, scalar)
+            power2 = (-0.5 * math.pow(x, scalar)) - (0.866 * math.pow(y, scalar)) - math.pow(r, scalar)
+            power3 = (-0.5 * math.pow(x, scalar)) + (0.866 * math.pow(y, scalar)) - math.pow(r, scalar)
+            
+        #print "x1: " + repr(x) + " y1: " + repr(y) + " x2: " + repr(r) + " p1: " + repr(power1) + " p2: " + repr(power2) + " p3: " + repr(power3)
+        self.update(self.LEFT_FRONT_MOTOR, self.constrain(power3))
+        self.update(self.RIGHT_FRONT_MOTOR, self.constrain(power2))
+        self.update(self.REAR_MOTOR, self.constrain(power1))
         
-        #print "x: " + repr(x) + " y: " + repr(y) + " r: " + repr(rotation)
-        #print "left: " + repr(self.constrain(leftPower, power)) + " right: " + repr(self.constrain(rightPower, power))
+    def scale(self, wheelPower):
+        # Create a temporary list
+        tempWheelPower = wheelPower
         
-    def constrain(self, currentValue, maxPower):
+        # Update the temporary list with absolute values
+        for index in range(len(tempWheelPower)):
+            tempWheelPower[index] = math.fabs(tempWheelPower[index])
+            
+        # Find max and difference
+        max = max(tempWheelPower)
+        difference = max - 1
+        
+        # Scale 
+        for index in range(len(tempWheelPower)):
+            if (wheelPower[index] > 0):
+                wheelPower[index] = wheelPower[index] - difference
+            elif (wheelPower[index] < 0):
+                wheelPower[index] = wheelPower[index] + difference
+            elif (wheelPower[index] == 0):
+                wheelPower[index] = difference
+                
+        return wheelPower
+    
+    def constrain(self, currentValue):
         returnValue = currentValue
-        if (maxPower > 0 and currentValue > maxPower):
-            returnValue = maxPower
-        elif (maxPower < 0 and currentValue < maxPower):
-            returnValue = maxPower
+        if (currentValue > 0 and currentValue > 1):
+            returnValue = 1
+        elif (currentValue < 0 and currentValue < -1):
+            returnValue = -1
         return returnValue
     
     def updateArduino(self, servoNumber):
